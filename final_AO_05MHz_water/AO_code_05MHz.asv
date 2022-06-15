@@ -1,0 +1,248 @@
+clearvars
+clc
+
+tic
+% Tissue Parameters
+load('Pressure.mat');
+load('Phase.mat');
+load('u_x.mat');
+load('u_y.mat');
+load('u_z.mat');
+
+AO.Pressure = n_p/5.3837e3;
+AO.Phase = n_ph;
+AO.ux = u_xx;
+AO.uy = u_yy;
+AO.uz = u_zz;
+
+Bound.Nx = single(202);
+Bound.Ny = single(202);
+Bound.Nz = single(101);                                                            % Dimension of the tissue
+
+
+Bound.dx = single(0.5);
+Bound.dy = single(0.5);                                                           % Spacing between grid lines 0.5 mm
+Bound.dz = single(0.5);
+
+
+Bound.x = single(zeros(1,202));
+Bound.y = single(zeros(1,202));                                                  % Initialize the x,y,z,r to zeros
+Bound.z = single(zeros(1,101));
+
+
+Bound.xmin = single(0);
+Bound.xmax = single(0);                                                            % Variable initialized to and are for storing min and max tissue dimensions
+Bound.ymin = single(0);
+Bound.ymax = single(0);
+Bound.zmin = single(0);
+Bound.zmax = single(0);
+
+Bound.x = ([0:Bound.Nx-1] - Bound.Nx/2)*Bound.dx;
+Bound.y = ([0:Bound.Ny-1] - Bound.Ny/2)*Bound.dy;                          % The coordinates of x,y,z,r
+Bound.z = ([0:Bound.Nz-1])* Bound.dz;
+
+
+Bound.xmin = min(Bound.x);
+Bound.xmax = max(Bound.x);
+Bound.ymin = min(Bound.y);                                                 % Min and Max tissue length
+Bound.ymax = max(Bound.y);
+Bound.zmin = min(Bound.z);
+Bound.zmax = max(Bound.z);
+
+Tissue.Radius_det = single(0.15);                                                                  % Radius of the detector
+
+Tissue.D1 = single(0);
+Tissue.D1 = single(20);                                            % Distance of D1 from source
+
+Tissue.D2 = 0;
+Tissue.D2 = single(30);                                                % Distance of D2 from source
+
+Tissue.D3 = 0;
+Tissue.D3 = single(40);                                             % Distance of D3 from source
+
+Tissue.count_D1 = single(0);
+Tissue.count_D2 =  single(0);                                                                % Counter to count number of photons reached the detector
+Tissue.count_D3 =  single(0);
+
+n = single([1,1.38,1]);                                                         % Row vector representing the refractive indexes of all the layers
+
+Tissue.d1 = single(50.5);                                                             % Tickness of first layer                                                           % Tickness of second layer
+
+lambda = single(850e-9);
+Tissue.f0 = single(0.5e6);                             %Acoustic Frequency
+Tissue.k0 = single(2*pi/lambda);
+
+Tissue.eta = single(0.32);
+
+Tissue.mod1 = single(zeros(1e5,1+(length(n)-2)));
+Tissue.mod2 = single(zeros(1e5,1+(length(n)-2)));
+Tissue.mod3 = single(zeros(1e5,1+(length(n)-2)));
+
+Tissue.phi1 = single(zeros(1e5,1+(length(n)-2)));
+Tissue.phi2 = single(zeros(1e5,1+(length(n)-2)));
+Tissue.phi3 = single(zeros(1e5,1+(length(n)-2)));
+
+Tissue.Det1 = single(zeros(1e5,2+(length(n)-2)));
+Tissue.Det2 = single(zeros(1e5,2+(length(n)-2)));
+Tissue.Det3 = single(zeros(1e5,2+(length(n)-2)));
+
+
+Tissue.Tr = single(0);
+
+M0 = single(zeros(Bound.Nx,Bound.Ny,Bound.Nz));
+M1 = single(zeros(Bound.Nx,Bound.Ny,Bound.Nz));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+n_photons = 1e8;                                                                         % Total Number of Photons to be simulated
+W = single(0.0001);                                                                      % Threshold weight for Roulette
+
+% [Bound,Tissue,AO,M0,M1] = n_Layer_AO_05MHz_final(Bound,Tissue,n,n_photons,W,AO,M0,M1);       % Main calling function to simulate the Monte Carlo
+[Bound,Tissue,AO,M0,M1] = n_Layer_AO_05MHz_final_mex(Bound,Tissue,n,n_photons,W,AO,M0,M1);
+
+M0_diagonal =  zeros(Bound.Nx,Bound.Nz);
+M1_diagonal =  zeros(Bound.Nx,Bound.Nz);
+
+for ii = 1:Bound.Nz
+    M0_diagonal(:,ii) = diag(M0(:,:,ii));
+    M1_diagonal(:,ii) = diag(M1(:,:,ii));
+end
+
+MD_new = M1_diagonal./M0_diagonal;
+
+%
+imagesc(Bound.x,Bound.z,log10(M0_diagonal'));
+colormap hsv
+xlim([-50 0])
+ylim([0 49.5])
+set(findobj(gcf,'type','axes'),'FontName','Helvetica','FontSize',45,'FontWeight','Bold')
+set(gcf,'color','w');
+xticks([-50 -40 -30 -20 -10 0]);
+xticklabels({'0','10','20','30','40', '50'});
+yticks([0 10 20 30 40 49.5]);
+yticklabels({'0','10','20','30','40', '50'});
+xlabel('x (mm)','FontSize',45)
+ylabel('z (mm)','FontSize',45);
+colorbar
+
+figure (3)
+imagesc(Bound.x,Bound.z,log10(M1_diagonal'));
+colormap hsv
+xlim([-50 0])
+ylim([0 49.5])
+set(findobj(gcf,'type','axes'),'FontName','Helvetica','FontSize',45,'FontWeight','Bold')
+set(gcf,'color','w');
+xticks([-50 -40 -30 -20 -10 0]);
+xticklabels({'0','10','20','30','40', '50'});
+yticks([0 10 20 30 40 49.5]);
+yticklabels({'0','10','20','30','40', '50'});
+xlabel('x (mm)','FontSize',45)
+ylabel('z (mm)','FontSize',45);
+colorbar
+
+figure (4)
+imagesc(Bound.x,Bound.z,log10(MD_new'));
+colormap hot
+xlim([-50 0])
+ylim([0 49.5])
+set(findobj(gcf,'type','axes'),'FontName','Helvetica','FontSize',45,'FontWeight','Bold')
+set(gcf,'color','w');
+xticks([-50 -40 -30 -20 -10 0]);
+xticklabels({'0','10','20','30','40', '50'});
+yticks([0 10 20 30 40 49.5]);
+yticklabels({'0','10','20','30','40', '50'});
+xlabel('x (mm)','FontSize',45)
+ylabel('z (mm)','FontSize',45);
+colorbar
+
+
+ppr = squeeze(n_p(:,51,:))';
+
+figure(5)
+% plot(sin(real(sum_EE)))
+imagesc(-flip(Bound.x(1:102)),Bound.z,ppr*1e-6)
+xlabel('x (mm)','FontSize',45);
+ylabel('z (mm)','FontSize',45);
+colormap hot
+set(findobj(gcf,'type','axes'),'FontName','Helvetica','FontSize',45,'FontWeight','Bold')
+h = colorbar('Ticks',[ 0.1 0.2 0.3 0.4 0.5],'TickLabels',{'0.1','0.2','0.3','0.4','0.5'})
+ylabel(h,'P_0 (MPa)','FontSize',45);
+
+tic
+
+ppl_ini = Tissue.Det1(1:Tissue.count_D1,3);
+% per_p_ppl = sum(ppl_ini,2);
+
+t_max = (max(per_p_ppl) - min(per_p_ppl))/(3e8);
+t_min = min(per_p_ppl)/(3e8);
+dt = (t_max - t_min)/(3e8);
+t_max = (max(per_p_ppl) - min(per_p_ppl))/(3e8);
+t_min = min(per_p_ppl)/(3e8);
+dt = (t_max - t_min)/(3e8);
+
+tt = linspace(t_min,t_max,21770);
+dt =  1.2715e-10;
+fs = 1/dt;
+
+wt = Tissue.Det1(1:Tissue.count_D1,2);
+phi_mag = Tissue.mod1(1:Tissue.count_D1,2);
+
+Et = wt.*exp(1i*Tissue.k0*phi_mag);
+
+figure(33)
+plot(abs(Et))
+
+ff = fftshift(fft(abs(Et)));
+figure(34)
+plot(abs(ff))
+
+
+
+%
+% % t_max = (max(per_p_ppl) - min(per_p_ppl))/(3e8);
+% % t_min = min(per_p_ppl)/(3e8);
+% % dt = (t_max - t_min)/(3e8);
+%
+% tt = linspace(t_min,t_max,21770);
+% dt =  1.2715e-10;
+% fs = 1/dt;
+%
+% wt = Tissue.Det1(1:21770,2);
+% phi_mag = Tissue.mod1(1:21770,2:5);
+% per_p_mag = sum(phi_mag,2);
+% phi_ph = Tissue.phi1(1:21770,2:5);
+% per_p_ph = sum(phi_ph,2);
+%
+% fo = Tissue.k0*3*1e8/(2*pi);
+%
+% argg = ((2*pi*Tissue.f0*tt)' - per_p_ph);
+% ph_tot = real(per_p_mag.*exp(1i*(argg)));
+%
+% argu = 2*pi*fo*tt';
+% sum_EE = wt.*exp(-1i*(argu- ph_tot));
+%
+% EE_det = abs(sum_EE);
+%
+% figure(50)
+% plot(tt,EE_det)
+%
+% fcutlow= Tissue.f0 - 1e5;   %low cut frequency in Hz
+% fcuthigh=Tissue.f0 - 1e5;   %high cut frequency in Hz
+% [b,a]=butter(2,[fcutlow,fcuthigh]/(fs/2),'bandpass');
+%
+% EE_bf = filter(b,a,double(EE_det));
+%
+% figure(50)
+% plot(tt,EE_bf)
+%
+% n = length(EE_det);
+%
+% XX = fftshift(fft(EE_bf));
+% freq1 = (-n/2:n/2-1)*(fs/n);
+%
+% power = abs(XX).^2/n;
+%
+% figure(30)
+% plot(freq1(n/2:end),power(n/2:end),'m')
+% ylim([0 1e-48])
+
+
+

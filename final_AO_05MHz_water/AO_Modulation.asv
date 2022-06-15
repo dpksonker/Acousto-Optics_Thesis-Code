@@ -1,0 +1,48 @@
+function [Photon,Tissue,M0,M1,AO,mod_dem,phi_dem] =  AO_Modulation(Photon,Tissue,Pn_cosi,Pn_sini,Pd_cosj,Pd_sinj,Bound,M0,M1,dwa,AO,mod_dem,phi_dem)
+
+
+ird = round(sqrt(Photon.x*Photon.x + Photon.y*Photon.y)/Bound.dr);
+
+if ird == single(0)
+
+    ir = single(1);
+
+elseif ird > (Bound.Nr-1)
+
+    ir = Bound.Nr;
+
+else
+    ir = ird;
+
+end
+
+% 
+izd = round(abs(Photon.z/Bound.dz));
+
+if izd == single(0)
+
+    iz = single(1);
+elseif izd > (Bound.Nz-1)
+
+    iz = Bound.Nz-1;
+
+else
+    iz = izd;
+
+end
+
+zz = iz
+rr = ir
+
+mod_dem(1,Photon.id) = sqrt(Pn_cosi*Pn_cosi + Pd_cosj*Pd_cosj + Pn_sini*Pn_sini + Pd_sinj*Pd_sinj);
+phi_dem(1,Photon.id) = atan((- Pn_sini - Pd_sinj)/(Pn_cosi + Pd_cosj));
+mod_phi = mod_dem(1,Photon.id);
+% 
+% 
+M0(iz,ir) = M0(iz,ir) + besselj(0,abs(mod_phi))*besselj(0,abs(mod_phi))*dwa;
+
+M1(iz,ir) = M1(iz,ir) +  2*besselj(1,abs(mod_phi))*besselj(1,abs(mod_phi))*dwa;
+
+
+
+end
